@@ -49,16 +49,16 @@ x = if 1 {
 
 ## Functions
 ```rust
-fn hello(): int
-fn hello(): int {
+hello(): int
+hello(): int {
     return 1;
 }
 
 // inline function
-fn add(x: int, y: int) x + y
-fn add(x: int, y: int): int: x + y
+add(x: int, y: int) x + y
+add(x: int, y: int): int: x + y
 
-fn add(x: int, y: int): int {
+add(x: int, y: int): int {
     return if CheckIsEven(x, y) == {
         true: x + y + 10
         false: x + y + 5
