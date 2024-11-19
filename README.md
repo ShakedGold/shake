@@ -55,7 +55,7 @@ hello(): int {
 }
 
 // inline function
-add(x: int, y: int): x + y
+add(x: int, y: int) x + y
 add(x: int, y: int): int: x + y
 
 add(x: int, y: int): int {
