@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"regexp"
 	"unicode"
@@ -35,6 +36,12 @@ func (tt TokenType) String() string {
 	return tokenNames[tt]
 }
 
+// Custom MarshalJSON method for TokenType
+func (tt TokenType) MarshalJSON() ([]byte, error) {
+	// Return the string representation as JSON
+	return json.Marshal(tt.String())
+}
+
 type Token struct {
 	Type  TokenType
 	Value string
@@ -42,8 +49,9 @@ type Token struct {
 
 // Define the keywords
 var keywords = map[string]TokenType{
-	"if":  TokenKeyword,
-	"for": TokenKeyword,
+	"if":     TokenKeyword,
+	"for":    TokenKeyword,
+	"return": TokenKeyword,
 }
 
 func Lex(reader *bytes.Reader) ([]Token, error) {
@@ -75,6 +83,31 @@ func Lex(reader *bytes.Reader) ([]Token, error) {
 		// Skip whitespace
 		if unicode.IsSpace(rune(byteResult)) {
 			continue
+		}
+
+		// if is comment (//) skip until NL
+		if rune(byteResult) == '/' {
+			nextByte, err := reader.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+			if rune(nextByte) == '/' {
+				// skip until NL
+				for {
+					ignoredByte, err := reader.ReadByte()
+					if err != nil {
+						return nil, err
+					}
+					if rune(ignoredByte) == '\n' {
+						break
+					}
+				}
+			} else {
+				err := reader.UnreadByte()
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 
 		// Match numbers (integers)
