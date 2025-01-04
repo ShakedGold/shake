@@ -13,7 +13,6 @@
             "args": [
                 "-i",
                 "../shake-programming-test/main.shk",
-                "-p",
             ]
         }
     ]

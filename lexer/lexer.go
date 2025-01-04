@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"regexp"
+	"shake/queue"
 	"unicode"
 )
 
@@ -18,7 +19,7 @@ const (
 	TokenIdentifierType
 	TokenNumber
 	TokenPunctuation
-	TokenNewLine
+	TokenSemicolon
 )
 
 var tokenNames = map[TokenType]string{
@@ -29,7 +30,7 @@ var tokenNames = map[TokenType]string{
 	TokenIdentifierType: "Type",
 	TokenNumber:         "Number",
 	TokenPunctuation:    "Punctuation",
-	TokenNewLine:        "NewLine",
+	TokenSemicolon:      "Semicolon",
 }
 
 func (tt TokenType) String() string {
@@ -43,26 +44,29 @@ func (tt TokenType) MarshalJSON() ([]byte, error) {
 }
 
 type Token struct {
-	Type  TokenType
-	Value string
+	Type       TokenType
+	Value      string
+	LineNumber uint64
 }
 
 // Define the keywords
 var keywords = map[string]TokenType{
 	"if":     TokenKeyword,
 	"for":    TokenKeyword,
+	"fn":     TokenKeyword,
 	"return": TokenKeyword,
 }
 
-func Lex(reader *bytes.Reader) ([]Token, error) {
+func Lex(reader *bytes.Reader) (*queue.Queue[Token], error) {
 	var tokens []Token
 
 	// Define the regular expressions for different token types
-	identifierRegexp := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*`) // No colon in identifier regex
+	identifierRegexp := regexp.MustCompile(`^[a-zA-Z_]`) // No colon in identifier regex
 	integerRegexp := regexp.MustCompile(`^[0-9]+`)
 	operationRegexp := regexp.MustCompile(`^[\+\-\*/=]`)
-	punctuationRegexp := regexp.MustCompile(`^[\(\)\{\};,]`)
+	punctuationRegexp := regexp.MustCompile(`^[\(\)\{\},]`)
 
+	var lineNumber uint64 = 1
 	wasPreviousColon := false
 	for {
 		byteResult, err := reader.ReadByte()
@@ -73,8 +77,27 @@ func Lex(reader *bytes.Reader) ([]Token, error) {
 			return nil, err
 		}
 
-		if byteResult == '\n' {
-			tokens = append(tokens, Token{Type: TokenNewLine, Value: "NL"})
+		if byteResult == '\r' {
+			byteResult, err := reader.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+			if byteResult == '\n' {
+				lineNumber++
+				continue
+			}
+			err = reader.UnreadByte()
+			if err != nil {
+				return nil, err
+			}
+		} else if byteResult == '\n' {
+			lineNumber++
+			continue
+		}
+
+		// Match ; (end statement)
+		if byteResult == ';' {
+			tokens = append(tokens, Token{Type: TokenSemicolon, Value: ";", LineNumber: lineNumber})
 			continue
 		}
 
@@ -85,31 +108,6 @@ func Lex(reader *bytes.Reader) ([]Token, error) {
 			continue
 		}
 
-		// if is comment (//) skip until NL
-		if rune(byteResult) == '/' {
-			nextByte, err := reader.ReadByte()
-			if err != nil {
-				return nil, err
-			}
-			if rune(nextByte) == '/' {
-				// skip until NL
-				for {
-					ignoredByte, err := reader.ReadByte()
-					if err != nil {
-						return nil, err
-					}
-					if rune(ignoredByte) == '\n' {
-						break
-					}
-				}
-			} else {
-				err := reader.UnreadByte()
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-
 		// Match numbers (integers)
 		if integerRegexp.MatchString(char) {
 			// Read number
@@ -117,30 +115,36 @@ func Lex(reader *bytes.Reader) ([]Token, error) {
 			if err != nil {
 				return nil, err
 			}
-			tokens = append(tokens, Token{Type: TokenNumber, Value: number})
+			tokens = append(tokens, Token{Type: TokenNumber, Value: number, LineNumber: lineNumber})
 			continue
 		}
 
 		// Match identifiers (variable names, function names)
 		if identifierRegexp.MatchString(char) {
 			// Read identifier
-			identifier, err := Scan(reader, identifierRegexp, true)
+			allowedAfterFirst, err := regexp.Compile("^[a-zA-Z0-9_]")
 			if err != nil {
 				return nil, err
 			}
+			identifier, err := Scan(reader, allowedAfterFirst, false)
+			if err != nil {
+				return nil, err
+			}
+			// add the first char
+			identifier = char + identifier
 
 			// Check if it's a keyword
 			if tokenType, ok := keywords[identifier]; ok {
 				// It's a keyword
-				tokens = append(tokens, Token{Type: tokenType, Value: identifier})
+				tokens = append(tokens, Token{Type: tokenType, Value: identifier, LineNumber: lineNumber})
 			} else {
 				// Regular identifier
 				// if wasBeforeColon true, treat this as type
 				if wasPreviousColon {
-					tokens = append(tokens, Token{Type: TokenIdentifierType, Value: identifier})
+					tokens = append(tokens, Token{Type: TokenIdentifierType, Value: identifier, LineNumber: lineNumber})
 					wasPreviousColon = false
 				} else {
-					tokens = append(tokens, Token{Type: TokenIdentifier, Value: identifier})
+					tokens = append(tokens, Token{Type: TokenIdentifier, Value: identifier, LineNumber: lineNumber})
 				}
 			}
 
@@ -149,13 +153,13 @@ func Lex(reader *bytes.Reader) ([]Token, error) {
 
 		// Match operations (+, -, *, /, =)
 		if operationRegexp.MatchString(char) {
-			tokens = append(tokens, Token{Type: TokenOperation, Value: char})
+			tokens = append(tokens, Token{Type: TokenOperation, Value: char, LineNumber: lineNumber})
 			continue
 		}
 
 		// Match punctuation (parentheses, braces, semicolons, etc.)
 		if punctuationRegexp.MatchString(char) {
-			tokens = append(tokens, Token{Type: TokenPunctuation, Value: char})
+			tokens = append(tokens, Token{Type: TokenPunctuation, Value: char, LineNumber: lineNumber})
 			continue
 		}
 
@@ -166,10 +170,10 @@ func Lex(reader *bytes.Reader) ([]Token, error) {
 		}
 
 		// If no match, add an unknown token
-		tokens = append(tokens, Token{Type: TokenUnknown, Value: char})
+		tokens = append(tokens, Token{Type: TokenUnknown, Value: char, LineNumber: lineNumber})
 	}
 
-	return tokens, nil
+	return queue.NewQueueFromSlice(tokens), nil
 }
 
 // Scan function to read and match allowed characters for a token

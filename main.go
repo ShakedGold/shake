@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"shake/interperter"
 	"shake/lexer"
 	"shake/parser"
 
@@ -31,16 +30,11 @@ func main() {
 		os.Exit(2)
 	}
 
-	parse := parser.NewParser(tokens)
-	globalScope, err := parse.ParseGlobalScope()
-	if globalScope == nil {
-		fmt.Fprintln(os.Stderr, err)
+	p := parser.NewParser(tokens)
+	program, err := p.ParseProgram()
+	if err != nil {
+		fmt.Println(err)
 		return
 	}
-
-	if options.Interperted {
-		program := interperter.NewProgram(globalScope)
-		returnValue := program.Run()
-		os.Exit(returnValue)
-	}
+	fmt.Println(*program)
 }
