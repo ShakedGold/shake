@@ -5,20 +5,15 @@ import (
 	"fmt"
 	"os"
 	"shake/lexer"
+	"shake/options"
 	"shake/parser"
 
 	"github.com/jessevdk/go-flags"
 )
 
-var options struct {
-	Verbose     []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
-	Input       string `short:"i" long:"input" description:"input shk file"`
-	Interperted bool   `short:"p" long:"interperted" description:"compile and run in interperted mode"`
-}
-
 func main() {
-	flags.Parse(&options)
-	programSource, err := os.ReadFile(options.Input)
+	flags.Parse(&options.Options)
+	programSource, err := os.ReadFile(options.Options.Input)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Could not read file")
 		os.Exit(1)

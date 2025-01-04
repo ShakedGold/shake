@@ -2,24 +2,22 @@ package parser
 
 import (
 	"fmt"
+	"runtime/debug"
 	"shake/lexer"
 	"shake/optional"
+	"shake/options"
 	"shake/queue"
 	"shake/types"
+
+	"github.com/fatih/color"
 )
 
-type NodeTerm interface{}
 type NodeGlobalStatements interface{}
 type NodeScopedStatement interface{}
-type NodeExpression interface{}
 
-type NodeAssignment struct {
-	name       string
-	type_      types.Type
-	expression NodeExpression
-}
 type NodeIdentifier struct {
 	token lexer.Token
+	type_ types.Type
 }
 type NodeScope struct {
 	statements []NodeScopedStatement
@@ -45,7 +43,7 @@ func (p *Parser) ParseProgram() (*NodeProgram, error) {
 	for p.tokens.Peek(0).Exists() {
 		token := p.tokens.Pop()
 		if token.Type != lexer.TokenKeyword {
-			return nil, ExpectedError("keywords - (fn/import)", token.LineNumber)
+			return nil, ExpectedError("keywords - `fn/import`", token.LineNumber)
 		}
 		switch token.Value {
 		case "fn":
@@ -57,14 +55,18 @@ func (p *Parser) ParseProgram() (*NodeProgram, error) {
 		// TODO: imports
 		case "import":
 		default:
-			return nil, ExpectedError("keywords - (fn/import)", token.LineNumber)
+			return nil, ExpectedError("keywords - `fn/import`", token.LineNumber)
 		}
 	}
 	return program, nil
 }
 
 func Error(reason string, line uint64) error {
-	return fmt.Errorf("[Parser Error]: %s, At line: %d", reason, line)
+	if len(options.Options.Verbose) > 0 && options.Options.Verbose[0] {
+		debug.PrintStack()
+	}
+	c := color.New(color.FgRed).Add(color.Underline)
+	return fmt.Errorf("%s: %s at line: %d", c.Sprint("[Parser Error]"), reason, line)
 }
 func ExpectedError(reason string, line uint64) error {
 	return Error("Expected "+reason, line)
@@ -82,4 +84,11 @@ func expectToken(optToken optional.Optional[lexer.Token], token lexer.Token) err
 	}
 
 	return nil
+}
+func (p *Parser) tryConsume(type_ lexer.TokenType) optional.Optional[lexer.Token] {
+	if p.tokens.Peek(0).Exists() && p.tokens.Peek(0).Value().Type == type_ {
+		return optional.NewOptional(p.tokens.Pop())
+	} else {
+		return optional.NewEmptyOptional[lexer.Token]()
+	}
 }

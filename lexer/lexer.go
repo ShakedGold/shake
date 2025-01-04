@@ -3,6 +3,7 @@ package lexer
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"regexp"
 	"shake/queue"
@@ -49,6 +50,21 @@ type Token struct {
 	LineNumber uint64
 }
 
+func (t Token) GetBinaryPrecedence() (int, error) {
+	if t.Type != TokenOperation {
+		return 0, errors.New("Not an operation")
+	}
+	switch t.Value {
+	case "+":
+	case "-":
+		return 0, nil
+	case "*":
+	case "/":
+		return 1, nil
+	}
+	return 0, errors.New("Not a supported operation")
+}
+
 // Define the keywords
 var keywords = map[string]TokenType{
 	"if":     TokenKeyword,
@@ -77,21 +93,55 @@ func Lex(reader *bytes.Reader) (*queue.Queue[Token], error) {
 			return nil, err
 		}
 
-		if byteResult == '\r' {
+		checkNL := func(b byte) (bool, error) {
+			if b == '\r' {
+				b, err := reader.ReadByte()
+				if err != nil {
+					return false, err
+				}
+				if b == '\n' {
+					lineNumber++
+					return true, nil
+				}
+				err = reader.UnreadByte()
+				if err != nil {
+					return false, err
+				}
+			} else if b == '\n' {
+				lineNumber++
+				return true, nil
+			}
+			return false, nil
+		}
+
+		if byteResult == '/' {
 			byteResult, err := reader.ReadByte()
 			if err != nil {
 				return nil, err
 			}
-			if byteResult == '\n' {
-				lineNumber++
+			if byteResult == '/' {
+				for {
+					byteResult, err := reader.ReadByte()
+					if err != nil {
+						return nil, err
+					}
+					shouldContinue, err := checkNL(byteResult)
+					if err != nil {
+						return nil, err
+					}
+					if shouldContinue {
+						break
+					}
+				}
 				continue
 			}
-			err = reader.UnreadByte()
-			if err != nil {
-				return nil, err
-			}
-		} else if byteResult == '\n' {
-			lineNumber++
+		}
+
+		shouldContinue, err := checkNL(byteResult)
+		if err != nil {
+			return nil, err
+		}
+		if shouldContinue {
 			continue
 		}
 
@@ -126,12 +176,10 @@ func Lex(reader *bytes.Reader) (*queue.Queue[Token], error) {
 			if err != nil {
 				return nil, err
 			}
-			identifier, err := Scan(reader, allowedAfterFirst, false)
+			identifier, err := Scan(reader, allowedAfterFirst, true)
 			if err != nil {
 				return nil, err
 			}
-			// add the first char
-			identifier = char + identifier
 
 			// Check if it's a keyword
 			if tokenType, ok := keywords[identifier]; ok {

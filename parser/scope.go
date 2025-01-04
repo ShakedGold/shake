@@ -18,7 +18,7 @@ func (p *Parser) parseScope() (*NodeScope, error) {
 	for {
 		currTokenOpt := p.tokens.Peek(0)
 		if !currTokenOpt.Exists() {
-			return nil, ExpectedError("`{ but found nothing`", 0)
+			return nil, ExpectedError("`{` but found nothing", 0)
 		}
 		currToken := currTokenOpt.Value()
 		if currToken.Type == lexer.TokenPunctuation && currToken.Value == "}" {

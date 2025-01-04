@@ -47,7 +47,7 @@ func (p *Parser) parseFunction() (*NodeFunction, error) {
 		}
 	}
 
-	// parse scope
+	// parse scope``
 	scope, err := p.parseScope()
 	if err != nil {
 		return nil, err
