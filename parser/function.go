@@ -14,7 +14,11 @@ type NodeFunction struct {
 
 func (p *Parser) parseFunction() (*NodeFunction, error) {
 	// expected identifier: `main/add`
-	err := expectToken(p.tokens.Peek(0), lexer.Token{Type: lexer.TokenIdentifier})
+	token, err := p.tokens.Peek(0)
+	if err != nil {
+		return nil, err
+	}
+	err = expectToken(token, lexer.Token{Type: lexer.TokenIdentifier})
 	if err != nil {
 		return nil, err
 	}
@@ -24,21 +28,33 @@ func (p *Parser) parseFunction() (*NodeFunction, error) {
 	}
 
 	// expected `(`
-	err = expectToken(p.tokens.Peek(0), lexer.Token{Type: lexer.TokenPunctuation, Value: "("})
+	token, err = p.tokens.Peek(0)
+	if err != nil {
+		return nil, err
+	}
+	err = expectToken(token, lexer.Token{Type: lexer.TokenPunctuation, Value: "("})
 	if err != nil {
 		return nil, err
 	}
 	p.tokens.Pop()
 
 	// expected `)`
-	err = expectToken(p.tokens.Peek(0), lexer.Token{Type: lexer.TokenPunctuation, Value: ")"})
+	token, err = p.tokens.Peek(0)
+	if err != nil {
+		return nil, err
+	}
+	err = expectToken(token, lexer.Token{Type: lexer.TokenPunctuation, Value: ")"})
 	if err != nil {
 		return nil, err
 	}
 	p.tokens.Pop()
 
 	// expected return type
-	err = expectToken(p.tokens.Peek(0), lexer.Token{Type: lexer.TokenIdentifierType})
+	token, err = p.tokens.Peek(0)
+	if err != nil {
+		return nil, err
+	}
+	err = expectToken(token, lexer.Token{Type: lexer.TokenIdentifierType})
 	if err == nil {
 		returnType := p.tokens.Pop()
 		nodeFunction.returnType = types.GetType(returnType.Value)

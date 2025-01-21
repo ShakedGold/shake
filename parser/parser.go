@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"runtime/debug"
 	"shake/lexer"
-	"shake/optional"
 	"shake/options"
 	"shake/queue"
 	"shake/types"
@@ -40,7 +39,8 @@ func (p *Parser) ParseProgram() (*NodeProgram, error) {
 		statements: []NodeGlobalStatements{},
 	}
 
-	for p.tokens.Peek(0).Exists() {
+	var err error
+	for err != nil {
 		token := p.tokens.Pop()
 		if token.Type != lexer.TokenKeyword {
 			return nil, ExpectedError("keywords - `fn/import`", token.LineNumber)
@@ -71,12 +71,7 @@ func Error(reason string, line uint64) error {
 func ExpectedError(reason string, line uint64) error {
 	return Error("Expected "+reason, line)
 }
-func expectToken(optToken optional.Optional[lexer.Token], token lexer.Token) error {
-	if !optToken.Exists() {
-		return ExpectedError(fmt.Sprintf("`%s` but didn't find anything", token.Value), 0)
-	}
-	currToken := optToken.Value()
-
+func expectToken(currToken *lexer.Token, token lexer.Token) error {
 	if token.Value == "" && token.Type != currToken.Type {
 		return ExpectedError(fmt.Sprintf("%s but found: %s", token.Type, currToken.Value), currToken.LineNumber)
 	} else if token.Value != "" && (token.Type != currToken.Type || token.Value != currToken.Value) {
@@ -84,11 +79,4 @@ func expectToken(optToken optional.Optional[lexer.Token], token lexer.Token) err
 	}
 
 	return nil
-}
-func (p *Parser) tryConsume(type_ lexer.TokenType) optional.Optional[lexer.Token] {
-	if p.tokens.Peek(0).Exists() && p.tokens.Peek(0).Value().Type == type_ {
-		return optional.NewOptional(p.tokens.Pop())
-	} else {
-		return optional.NewEmptyOptional[lexer.Token]()
-	}
 }

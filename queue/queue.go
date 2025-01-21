@@ -1,8 +1,7 @@
 package queue
 
 import (
-	"errors"
-	"shake/optional"
+	"fmt"
 )
 
 type Queue[T any] struct {
@@ -38,28 +37,21 @@ func (q *Queue[T]) Pop() T {
 	return el
 }
 
-// GetSliceElement safely retrieves an element from a slice using negative or positive indexing.
-func GetSliceElement[T any](slice []T, index int) (T, error) {
-	if index < 0 {
-		index = len(slice) + index
+func (q *Queue[T]) TryPop() (*T, error) {
+	_, err := q.Peek(0)
+	if err != nil {
+		return nil, err
 	}
-	if index < 0 || index >= len(slice) {
-		var zero T
-		return zero, errors.New("index out of range")
-	}
-	return slice[index], nil
+	item := q.Pop()
+	return &item, nil
 }
 
 // Peek retrieves an element from the queue at a specific offset without removing it.
-func (q *Queue[T]) Peek(offset int) optional.Optional[T] {
+func (q *Queue[T]) Peek(offset int) (*T, error) {
 	if offset < -q.Size() || offset >= q.Size() {
-		return optional.NewEmptyOptional[T]()
+		return nil, fmt.Errorf("offset: %d not in range: %d", q.Size(), offset)
 	}
-	item, err := GetSliceElement(q.items[q.head:], offset)
-	if err != nil {
-		return optional.NewEmptyOptional[T]()
-	}
-	return optional.NewOptional(item)
+	return &q.items[offset], nil
 }
 
 // NewQueue creates a new empty queue.

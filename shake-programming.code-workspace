@@ -1,11 +1,8 @@
 {
 	"folders": [
-		{
-			"path": "."
-		},
-		{
-			"path": "../shake-programming-test"
-		}
-	],
+        {
+            "path": "."
+        }
+    ],
 	"settings": {}
 }

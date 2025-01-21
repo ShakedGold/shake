@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"shake/lexer"
@@ -24,6 +25,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Could not lex file")
 		os.Exit(2)
 	}
+
+	json.NewEncoder(os.Stdout).Encode(tokens)
 
 	p := parser.NewParser(tokens)
 	program, err := p.ParseProgram()
