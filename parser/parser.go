@@ -11,37 +11,38 @@ import (
 	"github.com/fatih/color"
 )
 
-type NodeGlobalStatements interface{}
 type NodeScopedStatement interface{}
 
-type NodeIdentifier struct {
-	token lexer.Token
-	type_ types.Type
-}
 type NodeScope struct {
-	statements []NodeScopedStatement
+	statements  []NodeScopedStatement
+	identifiers map[string]*NodeTermIdentifier
+	returnType  types.Type
 }
 type NodeProgram struct {
-	statements []NodeGlobalStatements
+	NodeScope
+	CurrentScope *NodeScope
 }
+
 type Parser struct {
-	tokens *queue.Queue[lexer.Token]
+	tokens  *queue.Queue[lexer.Token]
+	program *NodeProgram
 }
 
 func NewParser(tokens *queue.Queue[lexer.Token]) *Parser {
 	return &Parser{
 		tokens: tokens,
+		program: &NodeProgram{
+			NodeScope: NodeScope{
+				statements:  []NodeScopedStatement{},
+				identifiers: make(map[string]*NodeTermIdentifier),
+			},
+		},
 	}
 }
 
 func (p *Parser) ParseProgram() (*NodeProgram, error) {
-	program := &NodeProgram{
-		statements: []NodeGlobalStatements{},
-	}
-
-	var err error
-	for err != nil {
-		token := p.tokens.Pop()
+	token, err := p.tokens.TryPop()
+	for err == nil {
 		if token.Type != lexer.TokenKeyword {
 			return nil, ExpectedError("keywords - `fn/import`", token.LineNumber)
 		}
@@ -51,14 +52,15 @@ func (p *Parser) ParseProgram() (*NodeProgram, error) {
 			if err != nil {
 				return nil, err
 			}
-			program.statements = append(program.statements, function)
+			p.program.statements = append(p.program.statements, function)
 		// TODO: imports
 		case "import":
 		default:
 			return nil, ExpectedError("keywords - `fn/import`", token.LineNumber)
 		}
+		token, err = p.tokens.TryPop()
 	}
-	return program, nil
+	return p.program, nil
 }
 
 func Error(reason string, line uint64) error {

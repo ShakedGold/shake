@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -27,12 +28,11 @@ func (q *Queue[T]) Size() int {
 }
 
 // Pop removes and returns the element at the front of the queue.
-func (q *Queue[T]) Pop() T {
+func (q *Queue[T]) Pop() *T {
 	if q.Size() == 0 {
-		var zero T
-		return zero // Return the zero value if the queue is empty
+		return nil // Return the zero value if the queue is empty
 	}
-	el := q.items[q.head]
+	el := &q.items[q.head]
 	q.head++
 	return el
 }
@@ -43,15 +43,15 @@ func (q *Queue[T]) TryPop() (*T, error) {
 		return nil, err
 	}
 	item := q.Pop()
-	return &item, nil
+	return item, nil
 }
 
 // Peek retrieves an element from the queue at a specific offset without removing it.
 func (q *Queue[T]) Peek(offset int) (*T, error) {
 	if offset < -q.Size() || offset >= q.Size() {
-		return nil, fmt.Errorf("offset: %d not in range: %d", q.Size(), offset)
+		return nil, fmt.Errorf("offset: %d not in range: %d", offset, q.Size())
 	}
-	return &q.items[offset], nil
+	return &q.items[offset+q.head], nil
 }
 
 // NewQueue creates a new empty queue.
@@ -68,4 +68,9 @@ func NewQueueFromSlice[T any](slice []T) *Queue[T] {
 		items: slice,
 		head:  0,
 	}
+}
+
+// Custom MarshalJSON method for TokenType
+func (q *Queue[T]) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(q.items, "", "\t")
 }

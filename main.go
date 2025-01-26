@@ -26,7 +26,11 @@ func main() {
 		os.Exit(2)
 	}
 
-	json.NewEncoder(os.Stdout).Encode(tokens)
+	if options.Options.Lexer {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		encoder.Encode(tokens)
+	}
 
 	p := parser.NewParser(tokens)
 	program, err := p.ParseProgram()
@@ -34,5 +38,8 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println(*program)
+
+	if options.Options.Parser {
+		fmt.Println(program)
+	}
 }

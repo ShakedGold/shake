@@ -1,0 +1,72 @@
+[
+  {
+    "Type": "Keyword",
+    "Value": "fn",
+    "LineNumber": 1
+  },
+  {
+    "Type": "Identifier",
+    "Value": "main",
+    "LineNumber": 1
+  },
+  {
+    "Type": "Punctuation",
+    "Value": "(",
+    "LineNumber": 1
+  },
+  {
+    "Type": "Punctuation",
+    "Value": ")",
+    "LineNumber": 1
+  },
+  {
+    "Type": "Type",
+    "Value": "int32",
+    "LineNumber": 1
+  },
+  {
+    "Type": "Punctuation",
+    "Value": "{",
+    "LineNumber": 1
+  },
+  {
+    "Type": "Identifier",
+    "Value": "x",
+    "LineNumber": 2
+  },
+  {
+    "Type": "Operation",
+    "Value": "=",
+    "LineNumber": 2
+  },
+  {
+    "Type": "Number",
+    "Value": "1",
+    "LineNumber": 2
+  },
+  {
+    "Type": "Semicolon",
+    "Value": ";",
+    "LineNumber": 2
+  },
+  {
+    "Type": "Keyword",
+    "Value": "return",
+    "LineNumber": 3
+  },
+  {
+    "Type": "Identifier",
+    "Value": "x",
+    "LineNumber": 3
+  },
+  {
+    "Type": "Semicolon",
+    "Value": ";",
+    "LineNumber": 3
+  },
+  {
+    "Type": "Punctuation",
+    "Value": "}",
+    "LineNumber": 4
+  }
+]

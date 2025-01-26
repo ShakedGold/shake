@@ -4,7 +4,11 @@ import "shake/lexer"
 
 func (p *Parser) parseScope() (*NodeScope, error) {
 	// expect `{`
-	err := expectToken(p.tokens.Peek(0), lexer.Token{Type: lexer.TokenPunctuation, Value: "{"})
+	token, err := p.tokens.Peek(0)
+	if err != nil {
+		return nil, ExpectedError("`{` but found nothing", 0)
+	}
+	err = expectToken(token, lexer.Token{Type: lexer.TokenPunctuation, Value: "{"})
 	if err != nil {
 		return nil, err
 	}
@@ -13,14 +17,16 @@ func (p *Parser) parseScope() (*NodeScope, error) {
 	scope := &NodeScope{
 		statements: []NodeScopedStatement{},
 	}
+	// set current scope
+	lastScope := p.program.CurrentScope
+	p.program.CurrentScope = scope
 
 	// parse statements until {
 	for {
-		currTokenOpt := p.tokens.Peek(0)
-		if !currTokenOpt.Exists() {
+		currToken, err := p.tokens.Peek(0)
+		if err != nil {
 			return nil, ExpectedError("`{` but found nothing", 0)
 		}
-		currToken := currTokenOpt.Value()
 		if currToken.Type == lexer.TokenPunctuation && currToken.Value == "}" {
 			p.tokens.Pop()
 			break
@@ -33,5 +39,8 @@ func (p *Parser) parseScope() (*NodeScope, error) {
 
 		scope.statements = append(scope.statements, statement)
 	}
+
+	// unset current scope
+	p.program.CurrentScope = lastScope
 	return scope, nil
 }

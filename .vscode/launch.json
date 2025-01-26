@@ -12,7 +12,8 @@
             "program": "${workspaceFolder}/main.go",
             "args": [
                 "-i",
-                "../shake-programming-test/main.shk",
+                "main.shk",
+                "-v"
             ]
         }
     ]

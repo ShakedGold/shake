@@ -1,15 +1,18 @@
 package parser
 
 import (
+	"encoding/json"
 	"fmt"
 	"shake/lexer"
-	"shake/types"
 )
 
 type NodeFunction struct {
-	scope      *NodeScope
-	name       string
-	returnType types.Type
+	scope *NodeScope
+	name  string
+}
+
+func (nf NodeFunction) MarshalJSON() ([]byte, error) {
+	return json.Marshal(nf.name)
 }
 
 func (p *Parser) parseFunction() (*NodeFunction, error) {
@@ -55,13 +58,11 @@ func (p *Parser) parseFunction() (*NodeFunction, error) {
 		return nil, err
 	}
 	err = expectToken(token, lexer.Token{Type: lexer.TokenIdentifierType})
-	if err == nil {
-		returnType := p.tokens.Pop()
-		nodeFunction.returnType = types.GetType(returnType.Value)
-		if nodeFunction.returnType == types.TypeUnknown {
-			return nil, ExpectedError(fmt.Sprintf("Type got: %s", returnType.Value), returnType.LineNumber)
-		}
+	if err != nil {
+		return nil, ExpectedError(fmt.Sprintf("Type got: %s", token.Value), token.LineNumber)
 	}
+
+	p.tokens.Pop()
 
 	// parse scope``
 	scope, err := p.parseScope()

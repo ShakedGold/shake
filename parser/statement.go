@@ -7,9 +7,9 @@ import (
 )
 
 type NodeAssignment struct {
-	name       string
-	type_      types.Type
-	expression *NodeExpression
+	Identifier string
+	Type       types.Type
+	Expression *NodeExpression
 }
 type NodeReturn struct {
 	value *NodeExpression
@@ -17,7 +17,11 @@ type NodeReturn struct {
 
 func (p *Parser) parseReturn() (*NodeReturn, error) {
 	// consume the `return` keyword
-	err := expectToken(p.tokens.Peek(0), lexer.Token{Type: lexer.TokenKeyword, Value: "return"})
+	token, err := p.tokens.Peek(0)
+	if err != nil {
+		return nil, ExpectedError("statement but found nothing", 0)
+	}
+	err = expectToken(token, lexer.Token{Type: lexer.TokenKeyword, Value: "return"})
 	if err != nil {
 		return nil, err
 	}
@@ -28,21 +32,30 @@ func (p *Parser) parseReturn() (*NodeReturn, error) {
 		return nil, err
 	}
 
+	currentScope := p.program.CurrentScope
+	if currentScope.returnType != expression.GetType() {
+		return nil, Error(fmt.Sprintf("Type of scope: %s is different from return type: %s", currentScope.returnType, expression.GetType().String()), token.LineNumber)
+	}
+
 	// consume `;`
-	err = expectToken(p.tokens.Peek(0), lexer.Token{Type: lexer.TokenSemicolon})
+	token, err = p.tokens.Peek(0)
+	if err != nil {
+		return nil, err
+	}
+	err = expectToken(token, lexer.Token{Type: lexer.TokenSemicolon})
 	if err != nil {
 		return nil, err
 	}
 	p.tokens.Pop()
 
 	return &NodeReturn{
-		value: expression,
+		value: &expression,
 	}, nil
 }
 
 func (p *Parser) parseAssignment() (*NodeAssignment, error) {
-	identifierOpt := p.tokens.Peek(0)
-	if !identifierOpt.Exists() {
+	token, err := p.tokens.Peek(0)
+	if err != nil {
 		return nil, ExpectedError("statement but found nothing", 0)
 	}
 	identifier := p.tokens.Pop()
@@ -53,16 +66,15 @@ func (p *Parser) parseAssignment() (*NodeAssignment, error) {
 	}
 
 	// only consume type if exists and if not get the expression type
-	identifierTypeOpt := p.tokens.Peek(0)
-	if !identifierTypeOpt.Exists() {
+	identifierToken, err := p.tokens.Peek(0)
+	if err != nil {
 		return nil, ExpectedError("type but found nothing", 0)
 	}
 
-	var typeString lexer.Token
-	var identifierType types.Type = types.TypeUnknown
-	if types.GetType(identifierTypeOpt.Value().Value) != types.TypeUnknown {
+	identifierType := types.GetType(identifierToken.Value)
+	var typeString *lexer.Token
+	if identifierType != types.TypeUnknown {
 		typeString = p.tokens.Pop()
-		identifierType = types.GetType(typeString.Value)
 	}
 
 	// consume the `=`
@@ -74,31 +86,45 @@ func (p *Parser) parseAssignment() (*NodeAssignment, error) {
 	}
 
 	if identifierType == types.TypeUnknown {
-		identifierType = expression.type_
+		identifierType = expression.GetType()
 	}
 
 	// check variable type and expression type match
-	if identifierType != expression.type_ {
-		return nil, Error(fmt.Sprintf("Mismatched type when assigning variable %s of type %s and expression of type %s", identifier.Value, identifierType.String(), expression.type_.String()), typeString.LineNumber)
+	if identifierType != expression.GetType() {
+		return nil, Error(fmt.Sprintf("Mismatched type when assigning variable %s of type %s and expression of type %s", identifier.Value, identifierType.String(), expression.GetType().String()), typeString.LineNumber)
 	}
 
 	// consume the `;`
-	err = expectToken(p.tokens.Peek(0), lexer.Token{Type: lexer.TokenSemicolon})
+	token, err = p.tokens.Peek(0)
+	if err != nil {
+		return nil, err
+	}
+	err = expectToken(token, lexer.Token{Type: lexer.TokenSemicolon})
 	if err != nil {
 		return nil, err
 	}
 	p.tokens.Pop()
 
 	assignment := &NodeAssignment{
-		name:       identifier.Value,
-		type_:      identifierType,
-		expression: expression,
+		Identifier: identifier.Value,
+		Type:       identifierType,
+		Expression: &expression,
+	}
+
+	// create the variable in the identifiers map
+	p.program.identifiers[identifier.Value] = &NodeTermIdentifier{
+		Type:       identifierType,
+		Identifier: identifier.Value,
 	}
 	return assignment, nil
 }
 
 func (p *Parser) parseStatement() (NodeScopedStatement, error) {
-	if p.tokens.Peek(0).Exists() && p.tokens.Peek(0).Value().Type == lexer.TokenKeyword && p.tokens.Peek(0).Value().Value == "return" {
+	token, err := p.tokens.Peek(0)
+	if err != nil {
+		return nil, ExpectedError("token but found nothing", 0)
+	}
+	if token.Type == lexer.TokenKeyword && token.Value == "return" {
 		return p.parseReturn()
 	}
 	return p.parseAssignment()
